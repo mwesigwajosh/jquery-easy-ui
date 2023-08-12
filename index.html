@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales items</title>
+    <link rel="stylesheet" type="text/css" href="https://www.jeasyui.com/easyui/themes/default/easyui.css">
+    <link rel="stylesheet" type="text/css" href="https://www.jeasyui.com/easyui/themes/icon.css">
+    <link rel="stylesheet" type="text/css" href="https://www.jeasyui.com/easyui/themes/color.css">
+    <link rel="stylesheet" type="text/css" href="https://www.jeasyui.com/easyui/demo/demo.css">
+    <script type="text/javascript" src="https://www.jeasyui.com/easyui/jquery.min.js"></script>
+    <script type="text/javascript" src="https://www.jeasyui.com/easyui/jquery.easyui.min.js"></script>
+</head>
+<body>
+    <table id="dg" title="Item Sales Report" class="easyui-datagrid" style="width:auto;height:autopx"
+            url="get_items.php"
+            toolbar="#toolbar" pagination="true"
+            rownumbers="true" fitColumns="true" singleSelect="true">
+        <thead>
+            <tr>
+                <th field="id" width="50">id</th>
+                <th field="date" width="50">Date</th>
+                <th field="rtc" width="50">Rtc</th>
+                <th field="description" width="50">Description</th>
+                <th field="quantity" width="50">Quantity</th>
+                <th field="unitprice" width="50">Unit Price</th>
+                <th field="totalamount" width="50">Total Amount</th>
+                <th field="vat" width="50">VAT</th>
+            </tr>
+        </thead>
+    </table>
+    <!--table toolbar-->
+    <div id="toolbar">
+        <br>
+        <div>
+            Date From: <input id="sd" type="text" class="easyui-datebox" required="required">
+            Date To: <input id="ed" type="text" class="easyui-datebox">
+            <a id="btn" href="javascript:void(0)" class="easyui-linkbutton" onclick="doDateFilter()">search</a>
+            <a id="btn" href="javascript:void(0)" class="easyui-linkbutton" onclick="printGrid()"> Print Report</a>
+        </div>
+        <br>
+        <div>
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-add" plain="true" onclick="newItem()">New Item</a>
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-edit" plain="true" onclick="editItem()">Edit Item</a>
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-remove" plain="true" onclick="deleteItem()">Delete Item</a>    
+        </div>
+        <br>
+        <div>
+            <!--item name search-->
+            <span>Item name:</span>
+            <input id="itemname" style="line-height:26px;border:1px solid #ccc">
+            <a href="#" class="easyui-linkbutton" onclick="doSearch()">Search</a>
+        </div>
+        <br>
+        <div>
+            <a href="#" class="easyui-linkbutton" onclick="refreshGrid()">Refresh</a>
+        </div>
+        <br>
+    </div>
+    <!--Dialog box-->
+    <div id="dlg" class="easyui-dialog" style="width:400px" data-options="closed:true,modal:true,border:'thin',buttons:'#dlg-buttons'">
+        <form id="fm" method="post" novalidate style="margin:0;padding:20px 50px">
+            <h3>Item Information</h3>
+            <div style="margin-bottom:10px">
+                <input name="date" class="easyui-datebox" required="true" label="Date:" style="width:100%">
+            </div>
+            <div style="margin-bottom:10px">
+                <input name="rtc" class="easyui-textbox" required="true" label="Rtc:" style="width:100%">
+            </div>
+            <div style="margin-bottom:10px">
+                <input name="description" class="easyui-textbox" required="true" label="Description:" style="width:100%">
+            </div>
+            <div style="margin-bottom:10px">
+                <input name="quantity" class="easyui-textbox" required="true" label="Quantity:" style="width:100%">
+            </div>
+            <div style="margin-bottom:10px">
+                <input name="unitprice" class="easyui-textbox" required="true" label="Unit price:" style="width:100%">
+            </div>
+        </form>
+    </div>
+    <div id="dlg-buttons">
+        <a href="javascript:void(0)" class="easyui-linkbutton c6" iconCls="icon-ok" onclick="saveItem()" style="width:90px">Save</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-cancel" onclick="javascript:$('#dlg').dialog('close')" style="width:90px">Cancel</a>
+    </div>
+    <!--Scripts-->
+    <script>
+        var url;
+
+        //adding new item
+        function newItem(){
+            $('#dlg').dialog('open').dialog('center').dialog('setTitle','New Item');
+            $('#fm').form('clear');
+            url = 'new_item.php';
+        }
+
+        //edit an existing item
+        function editItem(){
+            var row = $('#dg').datagrid('getSelected');
+            if (row){
+                $('#dlg').dialog('open').dialog('center').dialog('setTitle','Edit Item');
+                $('#fm').form('load',row);
+                url = 'edit_item.php?id=' + row.id;
+            }
+        }
+
+        //saving data in the form
+        function saveItem(){
+            $('#fm').form('submit',{
+                url: url,
+                iframe: false,
+                onSubmit: function(){
+                    return true;
+                },
+                success: function(data){
+                    $('#dlg').dialog('close');        // close the dialog
+                    $('#dg').datagrid('reload');    // reload the user data
+                }
+            });
+        }
+
+        //delete an item
+        function deleteItem(){
+            var row = $('#dg').datagrid('getSelected');
+            if (row){
+                $.post('delete_item.php',{id:row.id},function(result){
+                    if (result.success){
+                        $('#dg').datagrid('reload');    // reload the user data
+                    } else {
+                        $.messager.show({    // show error message
+                            title: 'Error',
+                            msg: result.errorMsg
+                        });
+                    }
+                },'json');
+            }
+        }
+
+        //item search
+        function doSearch() {
+            var itemname = $('#itemname').val();
+            if (itemname.length > 0) {
+                $.ajax({
+                    url: 'search_item.php',
+                    type: 'POST',
+                    data: { itemname: itemname },
+                    dataType: 'json',
+                    success: function(result) {
+                        if (result.length > 0) { // Check if there are results
+                            $('#dg').datagrid('loadData', { total: result.length, rows: result });
+                        } else {
+                            $.messager.show({
+                                title: 'No Results',
+                                msg: 'No items found.'
+                            });
+                        }
+                    },
+                    error: function() {
+                        $.messager.show({
+                            title: 'Error',
+                            msg: 'An error occurred while fetching data.'
+                        });
+                    }
+                });
+            } else {
+                $('#dg').datagrid('reload');
+            }
+        }
+
+        //date fi9lter
+        function doDateFilter(){
+            var startdate = $('#sd').val();
+            var enddate = $('#ed').val();
+            if (startdate.length > 0) {
+                if(enddate.length < 0){
+                    enddate = date('Y-m-d');
+                }
+                $.ajax({
+                    url: 'date_filter.php',
+                    type: 'POST',
+                    data: { 
+                        startdate: startdate,
+                        enddate: enddate 
+                    },
+                    dataType: 'json',
+                    success: function(result) {
+                        if (result.length > 0) { // Check if there are results
+                            $('#dg').datagrid('loadData', { total: result.length, rows: result });
+                        } else {
+                            $.messager.show({
+                                title: 'No Results',
+                                msg: 'No items found.'
+                            });
+                        }
+                    },
+                    error: function() {
+                        $.messager.show({
+                            title: 'Error',
+                            msg: 'An error occurred while fetching data.'
+                        });
+                    }
+                });
+            } else {
+                $('#dg').datagrid('reload');
+            }
+            
+        }
+
+        //refresh grid
+        function refreshGrid() {
+            $('#dg').datagrid('reload');
+        }
+
+        //print datagrid
+        function printGrid() {
+            var printWindow = window.open('', '_blank');
+            var printContent = '<!DOCTYPE html><html><head><title>Print Report</title></head><body>';
+
+            printContent += '<style>';
+            printContent += 'h2 { text-align: center; margin-bottom: 20px; }';
+            printContent += 'table { width: 100%; border-collapse: collapse; }';
+            printContent += 'th, td { border: 1px solid black; padding: 8px; text-align: left; }';
+            printContent += '</style>';
+            
+            printContent += '<h2>Item Sales Report</h2>';
+            printContent += '<table>';
+            printContent += '<thead>';
+            printContent += '<tr>';
+            printContent += '<th>ID</th>';
+            printContent += '<th>Date</th>';
+            printContent += '<th>Rtc</th>';
+            printContent += '<th>Description</th>';
+            printContent += '<th>Quantity</th>';
+            printContent += '<th>Unit Price</th>';
+            printContent += '<th>Total Amount</th>';
+            printContent += '<th>VAT</th>';
+            printContent += '</tr>';
+            printContent += '</thead>';
+            printContent += '<tbody>';
+            
+            var rows = $('#dg').datagrid('getRows');
+            for (var i = 0; i < rows.length; i++) {
+                if(i == rows.length - 1) {
+                    var row = rows[i];
+                    printContent += '<tr>';
+                    printContent += '<td>' +" "+ '</td>';
+                    printContent += '<td>' +" "+ '</td>';
+                    printContent += '<td>' +" "+ '</td>';
+                    printContent += '<td>' +" "+ '</td>';
+                    printContent += '<td>' + row.quantity + '</td>';
+                    printContent += '<td>' +" "+ '</td>';
+                    printContent += '<td>' + row.totalamount + '</td>';
+                    printContent += '<td>' + row.vat + '</td>';
+                    printContent += '</tr>';
+                }else{
+                    var row = rows[i];
+                    printContent += '<tr>';
+                    printContent += '<td>' + row.id + '</td>';
+                    printContent += '<td>' + row.date + '</td>';
+                    printContent += '<td>' + row.rtc + '</td>';
+                    printContent += '<td>' + row.description + '</td>';
+                    printContent += '<td>' + row.quantity + '</td>';
+                    printContent += '<td>' + row.unitprice + '</td>';
+                    printContent += '<td>' + row.totalamount + '</td>';
+                    printContent += '<td>' + row.vat + '</td>';
+                    printContent += '</tr>';
+                }
+            }
+            
+            printContent += '</tbody>';
+            printContent += '</table>';
+            printContent += '</body></html>';
+            
+            printWindow.document.open();
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            printWindow.print();
+        }
+            //column total
+            function calculateColumnTotal(dg) {
+                var totalamount = 0;
+                var totalvat = 0;
+                var rows = dg.datagrid('getRows');
+                for (var i = 0; i < rows.length; i++) {
+                    totalamount += parseInt( rows[i]['totalamount']);
+                    totalvat += parseInt( rows[i]['vat']);
+                }
+
+                // Add an extra row to the datagrid with the total value
+                var row = {};
+                row['quantity'] = 'Total'
+                row['totalamount'] = totalamount;
+                row['vat'] = totalvat;
+                dg.datagrid('appendRow', row);
+            }
+
+            $(function() {
+                var dg = $('#dg');
+                dg.datagrid({
+                    onLoadSuccess: function() {
+                        calculateColumnTotal(dg);
+                    }
+                });
+            });
+
+    </script>
+</body>
+</html>
